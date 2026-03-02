@@ -1,0 +1,91 @@
+import pandas as pd
+import numpy as np
+import re
+import nltk
+from nltk.corpus import stopwords
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import classification_report, accuracy_score
+nltk.download('stopwords')
+data = {
+    "ticket_text": [
+        "Unable to login to my account",
+        "Payment failed but amount deducted",
+        "App is crashing frequently",
+        "Need help resetting password",
+        "Refund not received yet",
+        "Website is very slow",
+        "Account hacked urgent help",
+        "Unable to update profile details"
+    ],
+    "category": [
+        "Login Issue",
+        "Payment Issue",
+        "Technical Issue",
+        "Login Issue",
+        "Payment Issue",
+        "Technical Issue",
+        "Security Issue",
+        "Technical Issue"
+    ],
+    "priority": [
+        "Medium",
+        "High",
+        "Medium",
+        "Low",
+        "High",
+        "Low",
+        "High",
+        "Low"
+    ]
+}
+
+df = pd.DataFrame(data)
+stop_words = set(stopwords.words('english'))
+
+def preprocess(text):
+    text = text.lower()
+    text = re.sub(r'[^a-zA-Z]', ' ', text)
+    words = text.split()
+    words = [word for word in words if word not in stop_words]
+    return " ".join(words)
+
+df["clean_text"] = df["ticket_text"].apply(preprocess)
+vectorizer = TfidfVectorizer()
+
+X = vectorizer.fit_transform(df["clean_text"])
+y_category = df["category"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y_category, test_size=0.2, random_state=42)
+
+model_category = LogisticRegression()
+model_category.fit(X_train, y_train)
+
+y_pred = model_category.predict(X_test)
+
+print("Category Classification Accuracy:", accuracy_score(y_test, y_pred))
+print(classification_report(y_test, y_pred))
+y_priority = df["priority"]
+
+X_train_p, X_test_p, y_train_p, y_test_p = train_test_split(X, y_priority, test_size=0.2, random_state=42)
+
+model_priority = LogisticRegression()
+model_priority.fit(X_train_p, y_train_p)
+
+y_pred_p = model_priority.predict(X_test_p)
+
+print("Priority Prediction Accuracy:", accuracy_score(y_test_p, y_pred_p))
+print(classification_report(y_test_p, y_pred_p))
+def predict_ticket(text):
+    cleaned = preprocess(text)
+    vectorized = vectorizer.transform([cleaned])
+    
+    category = model_category.predict(vectorized)[0]
+    priority = model_priority.predict(vectorized)[0]
+    
+    print("Predicted Category:", category)
+    print("Predicted Priority:", priority)
+
+# Example
+predict_ticket("My account is hacked and I cannot login")
