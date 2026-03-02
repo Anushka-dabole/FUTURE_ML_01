@@ -1,0 +1,52 @@
+import pandas as pd
+import numpy as np
+import re
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+data = {
+    "candidate_name": ["Anu", "Rahul", "Priya", "Karan"],
+    "resume_text": [
+        "Python Machine Learning Deep Learning SQL Data Analysis",
+        "Java Spring Boot MySQL HTML CSS",
+        "Python Data Science NLP Machine Learning TensorFlow",
+        "C++ Embedded Systems Microcontrollers"
+    ]
+}
+
+df = pd.DataFrame(data)
+job_description = "Looking for Python Machine Learning NLP SQL candidate with Data Science knowledge"
+def preprocess(text):
+    text = text.lower()
+    text = re.sub(r'[^a-zA-Z]', ' ', text)
+    return text
+
+df["clean_resume"] = df["resume_text"].apply(preprocess)
+job_clean = preprocess(job_description)
+
+vectorizer = TfidfVectorizer()
+
+all_text = df["clean_resume"].tolist() + [job_clean]
+
+tfidf_matrix = vectorizer.fit_transform(all_text)
+
+resume_vectors = tfidf_matrix[:-1]
+job_vector = tfidf_matrix[-1]
+similarity_scores = cosine_similarity(resume_vectors, job_vector)
+
+df["score"] = similarity_scores
+ranked_df = df.sort_values(by="score", ascending=False)
+
+print("Candidate Ranking:\n")
+print(ranked_df[["candidate_name", "score"]])
+# Extract keywords from job description
+job_skills = set(job_clean.split())
+
+def find_skill_gap(resume):
+    resume_skills = set(resume.split())
+    missing_skills = job_skills - resume_skills
+    return missing_skills
+
+ranked_df["missing_skills"] = ranked_df["clean_resume"].apply(find_skill_gap)
+
+print("\nSkill Gap Analysis:\n")
+print(ranked_df[["candidate_name", "missing_skills"]])
